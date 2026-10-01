@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EditTaskModal } from '@/components/edit-task-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { formatDue, isOverdue } from '@/lib/dates';
 import { addTask, fetchTasks, removeTask, setCompleted } from '@/lib/tasks';
 import { Priority, Task } from '@/types/task';
 
@@ -24,6 +26,7 @@ const COLORS: Record<Priority, string> = {
   medium: '#f59e0b',
   high: '#ef4444',
 };
+
 function sortTasks(list: Task[]): Task[] {
   return [...list].sort(
     (a, b) =>
@@ -31,12 +34,14 @@ function sortTasks(list: Task[]): Task[] {
       b.created_at.localeCompare(a.created_at),
   );
 }
+
 export default function TasksScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [editing, setEditing] = useState<Task | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -66,8 +71,7 @@ export default function TasksScreen() {
   }
 
   async function onToggle(task: Task) {
-    // Update the screen immediately, then save to the database
-        setTasks((prev) =>
+    setTasks((prev) =>
       sortTasks(
         prev.map((t) => (t.id === task.id ? { ...t, completed: !t.completed } : t)),
       ),
@@ -166,11 +170,24 @@ export default function TasksScreen() {
 
                   <View style={[styles.dot, { backgroundColor: COLORS[item.priority] }]} />
 
-                  <ThemedText
-                    style={[styles.itemTitle, item.completed && styles.done]}
-                    numberOfLines={2}>
-                    {item.title}
-                  </ThemedText>
+                  {/* Tap the text area to edit */}
+                  <Pressable style={{ flex: 1 }} onPress={() => setEditing(item)}>
+                    <ThemedText
+                      style={[styles.itemTitle, item.completed && styles.done]}
+                      numberOfLines={2}>
+                      {item.title}
+                    </ThemedText>
+                    {item.due_date && (
+                      <ThemedText
+                        style={[
+                          styles.due,
+                          isOverdue(item.due_date, item.completed) && styles.overdue,
+                        ]}>
+                        {isOverdue(item.due_date, item.completed) ? 'Overdue · ' : 'Due '}
+                        {formatDue(item.due_date)}
+                      </ThemedText>
+                    )}
+                  </Pressable>
 
                   <Pressable onPress={() => onDelete(item)} style={styles.del}>
                     <ThemedText style={styles.delText}>✕</ThemedText>
@@ -181,6 +198,8 @@ export default function TasksScreen() {
           )}
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <EditTaskModal task={editing} onClose={() => setEditing(null)} onSaved={load} />
     </ThemedView>
   );
 }
@@ -220,8 +239,10 @@ const styles = StyleSheet.create({
   check: { padding: 4 },
   checkText: { fontSize: 24 },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  itemTitle: { flex: 1, fontSize: 16 },
+  itemTitle: { fontSize: 16 },
   done: { textDecorationLine: 'line-through', opacity: 0.5 },
+  due: { fontSize: 12, opacity: 0.6, marginTop: 2 },
+  overdue: { color: '#ef4444', opacity: 1, fontWeight: '600' },
   del: { padding: 8 },
   delText: { color: '#ef4444', fontSize: 18, fontWeight: '700' },
 });

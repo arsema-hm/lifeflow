@@ -29,3 +29,16 @@ export async function removeTask(id: string) {
   const { error } = await supabase.from('tasks').delete().eq('id', id);
   if (error) throw error;
 }
+// Change a task's title, notes, priority or due date
+export async function updateTask(
+  id: string,
+  fields: {
+    title?: string;
+    description?: string | null;
+    priority?: Priority;
+    due_date?: string | null;
+  },
+) {
+  const { error } = await supabase.from('tasks').update(fields).eq('id', id);
+  if (error) throw error;
+}
