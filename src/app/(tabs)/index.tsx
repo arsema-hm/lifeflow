@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { QuoteCard } from '@/components/quote-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { formatDue, isOverdue } from '@/lib/dates';
@@ -21,7 +22,6 @@ export default function HomeScreen() {
   const { session } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  // Reload every time the Home tab is opened, so numbers are always fresh
   useFocusEffect(
     useCallback(() => {
       fetchTasks().then(setTasks).catch(() => {});
@@ -34,7 +34,6 @@ export default function HomeScreen() {
   const percent = total === 0 ? 0 : Math.round((done / total) * 100);
   const overdue = tasks.filter((t) => isOverdue(t.due_date, t.completed)).length;
 
-  // Next 3 unfinished tasks, soonest due date first, no-date tasks last
   const upNext = tasks
     .filter((t) => !t.completed)
     .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
@@ -67,6 +66,8 @@ export default function HomeScreen() {
               </ThemedText>
             </View>
           )}
+
+          <QuoteCard />
 
           <ThemedText type="subtitle">Up next</ThemedText>
           {upNext.length === 0 ? (

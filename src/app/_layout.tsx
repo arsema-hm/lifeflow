@@ -6,12 +6,13 @@ import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 function RootNavigator() {
   const { session, loading } = useAuth();
 
-  if (loading) return null; // wait until we know if someone is logged in
+  if (loading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="premium" options={{ presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" />
