@@ -1,15 +1,46 @@
 import { supabase } from '@/lib/supabase';
 import { Priority, Task } from '@/types/task';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Read all of the logged-in user's tasks
+const CACHE_KEY = 'tasks_cache_v1';
+const SYNC_KEY = 'tasks_last_sync_v1';
+
+// Try the database first. If there is no internet, fall back to the saved copy.
+export async function fetchTasksWithStatus(): Promise<{
+  tasks: Task[];
+  offline: boolean;
+  lastSynced: string | null;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('completed', { ascending: true })
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const tasks = data ?? [];
+    const now = new Date().toISOString();
+    await AsyncStorage.multiSet([
+      [CACHE_KEY, JSON.stringify(tasks)],
+      [SYNC_KEY, now],
+    ]);
+    return { tasks, offline: false, lastSynced: now };
+  } catch (e) {
+    const [[, raw], [, synced]] = await AsyncStorage.multiGet([CACHE_KEY, SYNC_KEY]);
+    if (raw) return { tasks: JSON.parse(raw), offline: true, lastSynced: synced };
+    throw e;
+  }
+}
+
 export async function fetchTasks(): Promise<Task[]> {
-  const { data, error } = await supabase
-    .from('tasks')
-    .select('*')
-    .order('completed', { ascending: true })
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return (await fetchTasksWithStatus()).tasks;
+}
+
+// Called on logout so the next user never sees someone else's tasks
+export async function clearTasksCache() {
+  await AsyncStorage.multiRemove([CACHE_KEY, SYNC_KEY]);
 }
 
 // Create a task (user_id is filled in automatically by the database)

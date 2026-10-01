@@ -17,7 +17,7 @@ import { EditTaskModal } from '@/components/edit-task-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { formatDue, isOverdue } from '@/lib/dates';
-import { addTask, fetchTasks, removeTask, setCompleted } from '@/lib/tasks';
+import { addTask, fetchTasksWithStatus, removeTask, setCompleted } from '@/lib/tasks';
 import { Priority, Task } from '@/types/task';
 
 const PRIORITIES: Priority[] = ['low', 'medium', 'high'];
@@ -42,10 +42,15 @@ export default function TasksScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [offline, setOffline] = useState(false);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setTasks(await fetchTasks());
+      const res = await fetchTasksWithStatus();
+      setTasks(res.tasks);
+      setOffline(res.offline);
+      setLastSynced(res.lastSynced);
     } catch (e: any) {
       Alert.alert('Could not load tasks', e.message);
     } finally {
@@ -109,6 +114,20 @@ export default function TasksScreen() {
           style={styles.wrap}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ThemedText type="title">Tasks</ThemedText>
+
+          {offline && (
+            <View style={styles.offline}>
+              <ThemedText style={styles.offlineText}>
+                Offline · showing saved tasks
+                {lastSynced
+                  ? ` · synced ${new Date(lastSynced).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}`
+                  : ''}
+              </ThemedText>
+            </View>
+          )}
 
           <View style={styles.addBox}>
             <TextInput
@@ -205,6 +224,8 @@ export default function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
+  offline: { backgroundColor: '#78350f', padding: 10, borderRadius: 10 },
+  offlineText: { color: '#fde68a', fontSize: 13, fontWeight: '600' },
   wrap: { flex: 1, paddingHorizontal: 20, paddingTop: 8, gap: 12 },
   addBox: { gap: 10 },
   input: {
