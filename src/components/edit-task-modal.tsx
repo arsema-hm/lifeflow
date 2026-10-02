@@ -32,13 +32,55 @@ const DUE_CHOICES: { key: DueOption; label: string }[] = [
   { key: 'week', label: 'In a week' },
 ];
 
-type RemindOption = 'none' | '1min' | '1hour' | 'tomorrow';
+type RemindOption = 'none' | '1min' | '5min' | '1hour' | '3hours' | 'tonight' | 'tomorrow' | 'custom';
 const REMIND_CHOICES: { key: RemindOption; label: string }[] = [
   { key: 'none', label: 'No change' },
   { key: '1min', label: 'In 1 min' },
+  { key: '5min', label: 'In 5 min' },
   { key: '1hour', label: 'In 1 hour' },
+  { key: '3hours', label: 'In 3 hours' },
+  { key: 'tonight', label: 'Tonight 8pm' },
   { key: 'tomorrow', label: 'Tomorrow 9am' },
+  { key: 'custom', label: 'Custom…' },
 ];
+
+// Work out the exact time for the chosen reminder, or explain what is wrong
+function reminderTime(option: RemindOption, customMinutes: string): { when?: Date; error?: string } {
+  const when = new Date();
+  switch (option) {
+    case '1min':
+      when.setMinutes(when.getMinutes() + 1);
+      break;
+    case '5min':
+      when.setMinutes(when.getMinutes() + 5);
+      break;
+    case '1hour':
+      when.setHours(when.getHours() + 1);
+      break;
+    case '3hours':
+      when.setHours(when.getHours() + 3);
+      break;
+    case 'tonight':
+      when.setHours(20, 0, 0, 0);
+      if (when.getTime() <= Date.now()) {
+        return { error: '8 pm has already passed today. Choose another time.' };
+      }
+      break;
+    case 'tomorrow':
+      when.setDate(when.getDate() + 1);
+      when.setHours(9, 0, 0, 0);
+      break;
+    case 'custom': {
+      const minutes = parseInt(customMinutes, 10);
+      if (!minutes || minutes < 1 || minutes > 10080) {
+        return { error: 'Type a number of minutes between 1 and 10080 (one week).' };
+      }
+      when.setMinutes(when.getMinutes() + minutes);
+      break;
+    }
+  }
+  return { when };
+}
 
 type Props = {
   task: Task | null; // null means the popup is closed
@@ -53,6 +95,7 @@ export function EditTaskModal({ task, onClose, onSaved }: Props) {
   const [due, setDue] = useState<DueOption | 'keep'>('none');
   const [saving, setSaving] = useState(false);
   const [remind, setRemind] = useState<RemindOption>('none');
+  const [customMinutes, setCustomMinutes] = useState('');
 
   // Fill the form only when a different task is opened
   useEffect(() => {
@@ -62,6 +105,7 @@ export function EditTaskModal({ task, onClose, onSaved }: Props) {
     setPriority(task.priority);
     setDue(task.due_date ? 'keep' : 'none');
     setRemind('none');
+    setCustomMinutes('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.id]);
 
@@ -71,6 +115,18 @@ export function EditTaskModal({ task, onClose, onSaved }: Props) {
       Alert.alert('Title needed', 'A task must have a title.');
       return;
     }
+
+    // Check the reminder time first, so nothing is half-saved
+    let reminderAt: Date | undefined;
+    if (remind !== 'none') {
+      const result = reminderTime(remind, customMinutes);
+      if (result.error) {
+        Alert.alert('Reminder time', result.error);
+        return;
+      }
+      reminderAt = result.when;
+    }
+
     setSaving(true);
     try {
       await updateTask(task.id, {
@@ -80,15 +136,8 @@ export function EditTaskModal({ task, onClose, onSaved }: Props) {
         due_date: due === 'keep' ? task.due_date : dueFromOption(due),
       });
 
-      if (remind !== 'none') {
-        const when = new Date();
-        if (remind === '1min') when.setMinutes(when.getMinutes() + 1);
-        if (remind === '1hour') when.setHours(when.getHours() + 1);
-        if (remind === 'tomorrow') {
-          when.setDate(when.getDate() + 1);
-          when.setHours(9, 0, 0, 0);
-        }
-        const ok = await scheduleTaskReminder(task.id, title.trim(), when);
+      if (reminderAt) {
+        const ok = await scheduleTaskReminder(task.id, title.trim(), reminderAt);
         if (!ok) {
           Alert.alert(
             'Reminder not set',
@@ -96,6 +145,8 @@ export function EditTaskModal({ task, onClose, onSaved }: Props) {
               ? 'Allow notifications for LifeFlow in your phone settings.'
               : 'Reminders need a development build. They are not available in Expo Go on Android.',
           );
+        } else {
+          Alert.alert('Reminder set', `You will be reminded at ${reminderAt.toLocaleString()}.`);
         }
       }
 
@@ -176,7 +227,7 @@ export function EditTaskModal({ task, onClose, onSaved }: Props) {
 
             {task && (
               <>
-                <ThemedText type="small">Voice note</ThemedText>
+                <ThemedText type="small">Voice notes</ThemedText>
                 <VoiceNote task={task} onSaved={onSaved} />
               </>
             )}
@@ -194,6 +245,17 @@ export function EditTaskModal({ task, onClose, onSaved }: Props) {
                 </Pressable>
               ))}
             </View>
+
+            {remind === 'custom' && (
+              <TextInput
+                style={styles.input}
+                value={customMinutes}
+                onChangeText={setCustomMinutes}
+                placeholder="Minutes from now (for example 45)"
+                placeholderTextColor="#888"
+                keyboardType="number-pad"
+              />
+            )}
 
             <View style={styles.row}>
               <Pressable style={styles.cancel} onPress={onClose}>

@@ -1,10 +1,19 @@
-import { supabase } from '@/lib/supabase';
-import { Priority, Task } from '@/types/task';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Read all of the logged-in user's tasks
+import { supabase } from '@/lib/supabase';
+import { Priority, Task } from '@/types/task';
+
 const CACHE_KEY = 'tasks_cache_v1';
 const SYNC_KEY = 'tasks_last_sync_v1';
+
+// Turn network failures into a message a user can understand
+function friendly(error: any): Error {
+  const text = String(error?.message ?? error ?? '').toLowerCase();
+  if (text.includes('fetch') || text.includes('network')) {
+    return new Error('You are offline. Connect to the internet to make changes.');
+  }
+  return error instanceof Error ? error : new Error(String(error?.message ?? error));
+}
 
 // Try the database first. If there is no internet, fall back to the saved copy.
 export async function fetchTasksWithStatus(): Promise<{
@@ -30,7 +39,7 @@ export async function fetchTasksWithStatus(): Promise<{
   } catch (e) {
     const [[, raw], [, synced]] = await AsyncStorage.multiGet([CACHE_KEY, SYNC_KEY]);
     if (raw) return { tasks: JSON.parse(raw), offline: true, lastSynced: synced };
-    throw e;
+    throw friendly(e);
   }
 }
 
@@ -43,24 +52,33 @@ export async function clearTasksCache() {
   await AsyncStorage.multiRemove([CACHE_KEY, SYNC_KEY]);
 }
 
-// Create a task (user_id is filled in automatically by the database)
 export async function addTask(title: string, priority: Priority) {
-  const { error } = await supabase.from('tasks').insert({ title, priority });
-  if (error) throw error;
+  try {
+    const { error } = await supabase.from('tasks').insert({ title, priority });
+    if (error) throw error;
+  } catch (e) {
+    throw friendly(e);
+  }
 }
 
-// Mark a task done or not done
 export async function setCompleted(id: string, completed: boolean) {
-  const { error } = await supabase.from('tasks').update({ completed }).eq('id', id);
-  if (error) throw error;
+  try {
+    const { error } = await supabase.from('tasks').update({ completed }).eq('id', id);
+    if (error) throw error;
+  } catch (e) {
+    throw friendly(e);
+  }
 }
 
-// Delete a task
 export async function removeTask(id: string) {
-  const { error } = await supabase.from('tasks').delete().eq('id', id);
-  if (error) throw error;
+  try {
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    if (error) throw error;
+  } catch (e) {
+    throw friendly(e);
+  }
 }
-// Change a task's title, notes, priority or due date
+
 export async function updateTask(
   id: string,
   fields: {
@@ -70,6 +88,10 @@ export async function updateTask(
     due_date?: string | null;
   },
 ) {
-  const { error } = await supabase.from('tasks').update(fields).eq('id', id);
-  if (error) throw error;
+  try {
+    const { error } = await supabase.from('tasks').update(fields).eq('id', id);
+    if (error) throw error;
+  } catch (e) {
+    throw friendly(e);
+  }
 }
