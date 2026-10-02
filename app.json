@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "lifeflow",
+    "name": "LifeFlow",
     "slug": "lifeflow",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,9 +8,12 @@
     "scheme": "lifeflow",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.arsemahm.lifeflow",
+      "supportsTablet": true
     },
     "android": {
+      "package": "com.arsemahm.lifeflow",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -33,7 +36,13 @@
           "imageWidth": 76
         }
       ],
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "LifeFlow needs the microphone to record voice notes."
+        }
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
