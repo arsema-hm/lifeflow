@@ -17,6 +17,7 @@ import { EditTaskModal } from '@/components/edit-task-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { formatDue, isOverdue } from '@/lib/dates';
+import { cancelTaskReminder } from '@/lib/notifications';
 import { addTask, fetchTasksWithStatus, removeTask, setCompleted } from '@/lib/tasks';
 import { Priority, Task } from '@/types/task';
 
@@ -41,9 +42,12 @@ export default function TasksScreen() {
   const [priority, setPriority] = useState<Priority>('medium');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [editing, setEditing] = useState<Task | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
+
+  // Always the latest copy of the task being edited
+  const editing = tasks.find((t) => t.id === editingId) ?? null;
 
   const load = useCallback(async () => {
     try {
@@ -83,6 +87,7 @@ export default function TasksScreen() {
     );
     try {
       await setCompleted(task.id, !task.completed);
+      if (!task.completed) await cancelTaskReminder(task.id);
     } catch (e: any) {
       Alert.alert('Could not update task', e.message);
       load();
@@ -98,6 +103,7 @@ export default function TasksScreen() {
         onPress: async () => {
           try {
             await removeTask(task.id);
+            await cancelTaskReminder(task.id);
             setTasks((prev) => prev.filter((t) => t.id !== task.id));
           } catch (e: any) {
             Alert.alert('Could not delete task', e.message);
@@ -190,10 +196,11 @@ export default function TasksScreen() {
                   <View style={[styles.dot, { backgroundColor: COLORS[item.priority] }]} />
 
                   {/* Tap the text area to edit */}
-                  <Pressable style={{ flex: 1 }} onPress={() => setEditing(item)}>
+                  <Pressable style={{ flex: 1 }} onPress={() => setEditingId(item.id)}>
                     <ThemedText
                       style={[styles.itemTitle, item.completed && styles.done]}
                       numberOfLines={2}>
+                      {item.voice_path ? '🎙 ' : ''}
                       {item.title}
                     </ThemedText>
                     {item.due_date && (
@@ -218,7 +225,7 @@ export default function TasksScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      <EditTaskModal task={editing} onClose={() => setEditing(null)} onSaved={load} />
+      <EditTaskModal task={editing} onClose={() => setEditingId(null)} onSaved={load} />
     </ThemedView>
   );
 }

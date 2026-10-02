@@ -9,4 +9,5 @@ export type Task = {
   completed: boolean;
   due_date: string | null;
   created_at: string;
+  voice_path: string | null;
 };
