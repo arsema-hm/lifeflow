@@ -1,56 +1,59 @@
-# Welcome to your Expo app 👋
+# LifeFlow 📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross-platform task manager with voice notes, reminders and offline access.
+Built with React Native, Expo and TypeScript, with a Supabase backend.
 
-## Get started
+## Features
+- Email sign-up and login (Supabase Auth)
+- Tasks: create, edit, complete and delete, with priority and due date
+- Home dashboard: progress, overdue count, next tasks
+- Voice notes: record, play, pause, seek and delete multiple notes per task
+- Local reminders (scheduled notifications)
+- Offline mode: cached tasks with a "last synced" banner
+- Daily focus quote loaded from a public REST API
+- Premium screen (UI demo only, no real payments)
 
-1. Install dependencies
+## Tech stack
+React Native · Expo (SDK 57) · TypeScript · Expo Router · Supabase (Auth,
+Postgres, Storage) · AsyncStorage · expo-notifications · expo-audio · EAS Build
 
-   ```bash
-   npm install
-   ```
+## How it works
+- Each user's data is protected with Postgres Row Level Security.
+- Voice recordings are stored in a private bucket, one folder per user,
+  and played through temporary signed URLs.
+- Tasks are cached in AsyncStorage. If the network request fails, the
+  cached list is shown.
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+## Run it locally
 ```bash
-npm run reset-project
+git clone https://github.com/arsema-hm/lifeflow.git
+cd lifeflow
+npm install
+```
+Create a `.env` file:
+```
+EXPO_PUBLIC_SUPABASE_URL=your-project-url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-publishable-key
+```
+Then run `npx expo start` and scan the QR code with Expo Go.
+Reminders need a development or release build (Expo Go on Android does not
+support notifications).
+
+## Build for Android
+```bash
+eas build --platform android --profile preview
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Platform notes
+- Tested on a physical Android phone (APK built with EAS).
+- The code targets iOS too. I develop on Windows, so iOS builds would go
+  through EAS cloud builds or a Mac with Xcode. iOS is untested.
+- Not published to the stores yet.
 
-### Other setup steps
+## Known limitations
+- Offline mode is read-only; edits are not queued for sync.
+- Reminders are local notifications, not remote push.
+- Premium is a UI placeholder; no billing is integrated.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Author
+Arsema-Hm.
